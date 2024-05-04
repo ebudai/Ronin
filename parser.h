@@ -16,7 +16,7 @@ namespace ronin
 			importer,
 			exporter,
 			literal,
-			delegate,
+			delegate_declaration,
 			list,
 			input,
 			lookup,
@@ -52,21 +52,21 @@ namespace ronin
 	struct association;
 	struct block;
 	struct data_declaration;
-	struct delegate;
+	struct delegate_declaration;
 	struct function_declaration;
 	struct reference;
 	struct type_declaration;
 	struct extension;
 
 	using declaration = std::variant<data_declaration, function_declaration, type_declaration, extension>;
-	using list = aggregate<'{', reference, ',', '}'>;
+	using list = aggregate<'[', reference, ',', ']'>;
 	using input = aggregate<'(', reference, ',', ')'>;
 	using lookup = aggregate<'{', association, ',', '}'>;	
-	using expression = std::variant<reference, literal, delegate, list, input, lookup, data_declaration, function_declaration, type_declaration, extension, block>;
+	using expression = std::variant<reference, literal, delegate_declaration, list, input, lookup, data_declaration, function_declaration, type_declaration, extension, block>;
 
 	struct reference
 	{
-		using component = std::variant<words, literal, delegate, list, input, lookup>;
+		using component = std::variant<words, literal, delegate_declaration, list, input, lookup>;
 
 		std::vector<component*> components;
 	};
@@ -157,9 +157,9 @@ namespace ronin
 		type_declaration::body* definition;
 	};
 
-	struct delegate
+	struct delegate_declaration
 	{
-		using parameter_block = std::variant<words, ronin::parameter_block>;
+		using parameter_block = std::variant<words, parameter_block>;
 
 		parameter_block* parameters;
 		expression* definition;

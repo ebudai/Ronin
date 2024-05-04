@@ -13,8 +13,9 @@ namespace ronin
 
 		virtual bool operator==(const context& other) const { return this == &other; }
 
-		virtual std::vector<member*> operator[](std::span<identifier::value_type> identifier) const;
+		virtual std::vector<member*> operator[](std::span<identifier::value_type> identifier);
 
+		void import(module* module);
 		void add(const member& member);
 
 	protected:
@@ -31,7 +32,7 @@ namespace ronin
 	{
 		~scope() override = default;
 
-		std::vector<member*> operator[](std::span<identifier::value_type> identifier) const override;
+		std::vector<member*> operator[](std::span<identifier::value_type> identifier) override;
 
 		context* parent;
 		std::vector<resolution> lines;
@@ -41,9 +42,15 @@ namespace ronin
 	{
 		~module() override = default;
 
-		std::vector<member*> operator[](std::span<identifier::value_type> identifier) const override;
+		std::vector<member*> operator[](std::span<identifier::value_type> identifier) override;
+		module* operator[](words name);
 
 		token name;
-		std::vector<scope> submodules;
+		std::vector<context*> submodules;
 	};
+
+	namespace main
+	{
+		static inline thread_local module module;
+	}
 }

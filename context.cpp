@@ -17,20 +17,21 @@ namespace ronin
 			}
 
 			auto const params = std::get<parameters>(lhs[i]);
-			if (auto const other = std::get_if<parameters>(&rhs[i]); params == *other) continue;
+			//if (auto const other = std::get_if<parameters>(&rhs[i]); params == *other) continue;
 			return false;
 		}
 
 		return true;
 	}
 
-	std::vector<member*> context::operator[](std::span<identifier::value_type> identifier) const
+	std::vector<member*> context::operator[](const std::span<identifier::value_type> identifier)
 	{
 		std::vector<member*> found;
 
-		for (const auto&[name] : members)
+		int sublength = 1;
+		for (member& member : members)
 		{
-			if (*name == identifier)
+			if (*member.identifier == identifier.subspan((0, sublength)))
 			{
 
 			}

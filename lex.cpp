@@ -73,11 +73,11 @@ namespace ronin
 			&& type != U_INITIAL_PUNCTUATION
 			&& type != U_FINAL_PUNCTUATION) return 0;
 
-		const auto source = sourcecode.substr(length);
-		if (source.empty() == false) return length;
+		const auto next = sourcecode.substr(length);
+		if (next.empty()) return length;
 
 		size_t compound_assignment = 0;
-		U8_NEXT(source, compound_assignment, source.size(), character);
+		U8_NEXT(next, compound_assignment, next.size(), character);
 		if (character == static_cast<char>(assign)) length += compound_assignment;
 
 		return length;
@@ -93,14 +93,14 @@ namespace ronin
 		return sourcecode.starts_with(lexicon::returns) ? 2 : 0;
 	}
 
-	template <> size_t lex<open_paren>(const string_view sourcecode) { return sourcecode[0] == (char)open_paren; }
-	template <> size_t lex<close_paren>(const string_view sourcecode) { return sourcecode[0] == (char)close_paren; }
-	template <> size_t lex<open_brace>(const string_view sourcecode) { return sourcecode[0] == (char)open_brace; }
-	template <> size_t lex<close_brace>(const string_view sourcecode) { return sourcecode[0] == (char)close_brace; }
-	template <> size_t lex<delegation>(const string_view sourcecode) { return sourcecode[0] == (char)delegation; }
-	template <> size_t lex<separator>(const string_view sourcecode) { return sourcecode[0] == (char)separator; }
-	template <> size_t lex<terminal>(const string_view sourcecode) { return sourcecode[0] == (char)terminal; }
-	template <> size_t lex<assign>(const string_view sourcecode) { return sourcecode[0] == (char)assign; }
+	template <> size_t lex<open_paren>(const string_view sourcecode) { return sourcecode[0] == static_cast<char>(open_paren); }
+	template <> size_t lex<close_paren>(const string_view sourcecode) { return sourcecode[0] == static_cast<char>(close_paren); }
+	template <> size_t lex<open_brace>(const string_view sourcecode) { return sourcecode[0] == static_cast<char>(open_brace); }
+	template <> size_t lex<close_brace>(const string_view sourcecode) { return sourcecode[0] == static_cast<char>(close_brace); }
+	template <> size_t lex<delegation>(const string_view sourcecode) { return sourcecode[0] == static_cast<char>(delegation); }
+	template <> size_t lex<separator>(const string_view sourcecode) { return sourcecode[0] == static_cast<char>(separator); }
+	template <> size_t lex<terminal>(const string_view sourcecode) { return sourcecode[0] == static_cast<char>(terminal); }
+	template <> size_t lex<assign>(const string_view sourcecode) { return sourcecode[0] == static_cast<char>(assign); }
 
 	template <token::type T> static size_t lex_keyword(string_view sourcecode)
 	{
@@ -190,13 +190,13 @@ namespace ronin
 		return length;
 	}
 
-	template <token::type T, token::type U, token::type... Ts> static vector<token> lex(string_view sourcecode)
+	template <token::type T0, token::type T1, token::type... Ts> static vector<token> lex(string_view sourcecode)
 	{
 		vector<token> tokens;
 
 		while (sourcecode.empty() == false)
 		{
-			[[maybe_unused]] bool success = lex<T>(sourcecode, tokens) || lex<U>(sourcecode, tokens) || (lex<Ts>(sourcecode, tokens) || ...);
+			[[maybe_unused]] bool success = lex<T0>(sourcecode, tokens) || lex<T1>(sourcecode, tokens) || (lex<Ts>(sourcecode, tokens) || ...);
 		}
 
 		tokens.emplace_back("", nothing);

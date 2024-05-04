@@ -149,7 +149,7 @@ namespace ronin
 			if (std::holds_alternative<words>(*component))
 			{
 				tokens = parser;
-				return new reference{ components };
+				return new reference{ std::move(components) };
 			}
 		}
 
@@ -161,11 +161,11 @@ namespace ronin
 		return variant_parser<expression>::parse(tokens);
 	}
 
-	template <> delegate* parse(span<token>& tokens)
+	template <> delegate_declaration* parse(span<token>& tokens)
 	{
 		span<token> parser = tokens;
 		
-		if (auto const parameter_block = variant_parser<delegate::parameter_block>::parse(parser))
+		if (auto const parameter_block = variant_parser<delegate_declaration::parameter_block>::parse(parser))
 		{
 			if (parser.front().is<returns>())
 			{
@@ -174,11 +174,11 @@ namespace ronin
 				if (auto const expression = parse<ronin::expression>(parser))
 				{
 					tokens = parser;
-					return new delegate{ parameter_block, expression };
+					return new delegate_declaration{ parameter_block, expression };
 				}
 
 				delete parameter_block;
-				return new bad<delegate>::expected("single or compound statement", tokens = parser);
+				return new bad<delegate_declaration>::expected("single or compound statement", tokens = parser);
 			}
 
 			delete parameter_block;
@@ -208,7 +208,7 @@ namespace ronin
 		
 		if (auto const destination = parse<reference>(parser))
 		{
-			token symbol = parser.front();
+			const token symbol = parser.front();
 			if (symbol.is<assign>())
 			{
 				parser = parser.subspan(1);
@@ -231,7 +231,7 @@ namespace ronin
 
 	template <> loop* parse(span<token>& tokens)
 	{
-		token keyword = tokens.front();
+		const token keyword = tokens.front();
 
 		if (keyword.is_not<iterate>()) return nullptr;
 		
@@ -239,8 +239,7 @@ namespace ronin
 
 		if (auto const iterator = parse<reference>(parser))
 		{
-			token returning = parser.front();
-			if (returning.is<returns>())
+			if (const token returning = parser.front(); returning.is<returns>())
 			{
 				parser = parser.subspan(1);
 
@@ -319,7 +318,7 @@ namespace ronin
 
 	template <> data_declaration* parse(span<token>& tokens)
 	{
-		token keyword = tokens.front();
+		const token keyword = tokens.front();
 		if (keyword.is<var>() || keyword.is<let>())
 		{
 			auto parser = tokens.subspan(1);
@@ -348,8 +347,7 @@ namespace ronin
 
 		while (parser.front().is_not<nothing>())
 		{
-			auto const component = parse<name::component>(parser);
-			if (component) components.push_back(component);
+			if (auto const component = parse<name::component>(parser)) components.push_back(component);
 			else break;
 		}
 
@@ -361,7 +359,7 @@ namespace ronin
 
 	template <> function_declaration* parse(span<token>& tokens)
 	{
-		token keyword = tokens.front();
+		const token keyword = tokens.front();
 		if (keyword.is_not<let>()) return nullptr;
 		
 		span<token> parser = tokens.subspan(1);
@@ -384,7 +382,7 @@ namespace ronin
 
 			if (parser.front().is<assign>())
 			{
-				token equals = parser.front();
+				const token equals = parser.front();
 				parser = parser.subspan(1);
 
 				if (auto const definition = parse<ronin::expression>(parser))
@@ -411,7 +409,7 @@ namespace ronin
 		return variant_parser<declaration>::parse(tokens);
 	}
 
-	template <> type_declaration::definition* parse<type_declaration::definition>(span<token>& tokens)
+	template <> type_declaration::body* parse<type_declaration::body>(span<token>& tokens)
 	{
 		span<token> parser = tokens;
 		auto const algebra = parse<reference>(parser);
@@ -420,7 +418,7 @@ namespace ronin
 		if (algebra || body)
 		{
 			tokens = parser;
-			return new type_declaration::definition{ algebra, body };
+			return new type_declaration::body{ algebra, body };
 		}
 
 		return nullptr;
@@ -440,15 +438,15 @@ namespace ronin
 				const token equals = parser.front();
 				parser = parser.subspan(1);
 				
-				vector<type_declaration::definition> definitions;
-				while (auto const definition = parse<type_declaration::definition>(parser))
+				vector<type_declaration::body> definitions;
+				while (auto const definition = parse<type_declaration::body>(parser))
 				{
 					definitions.push_back(*definition);
 					delete definition;
 				}				
 
 				tokens = parser;
-				return new type_declaration{ keyword, identifier, equals, definitions };
+				return new type_declaration{ keyword, identifier, equals, std::move(definitions) };
 			}
 
 			delete identifier;
@@ -460,14 +458,14 @@ namespace ronin
 
 	template <> extension* parse(span<token>& tokens)
 	{
-		token keyword = tokens.front();
+		const token keyword = tokens.front();
 		if (keyword.is_not<extend>()) return nullptr;
 
 		span<token> parser = tokens.subspan(1);
 
 		if (auto const identifier = parse<ronin::name>(parser))
 		{
-			if (auto const definition = parse<type_declaration::definition>(parser))
+			if (auto const definition = parse<type_declaration::body>(parser))
 			{
 				tokens = parser;
 				return new extension{ keyword, identifier, definition };
@@ -517,7 +515,7 @@ namespace ronin
 			PARSE(extension);
 			PARSE(literal);
 			PARSE(reference);
-			PARSE(delegate);
+			PARSE(delegate_declaration);
 			PARSE(list);
 			PARSE(lookup);
 			PARSE(input);

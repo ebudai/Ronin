@@ -11,7 +11,7 @@ namespace unit
 	TEST_P(delegate, basic)
 	{
 		EXPECT_FALSE(statements.empty());
-		EXPECT_EQ(statements.front().tag<statement::type>(), statement::type::delegate);
+		EXPECT_EQ(statements.front().tag<statement::type>(), statement::type::delegate_declaration);
 	}
 
 	vector<token> delegate_tokens =

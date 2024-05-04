@@ -21,6 +21,13 @@ namespace ronin
 
 	struct type;
 
+	struct temporary
+	{
+
+	};
+
+	using value = std::variant<resolution, temporary>;
+
 	struct variable : member
 	{
 		type* type;
@@ -90,11 +97,11 @@ namespace ronin
 
 		explicit unresolved(ronin::identifier* identifier) : identifier(identifier) {}
 
-		bool operator==(const T& other) const final
-		{
-			auto unresolved_other = static_cast<const unresolved&>(other);
+		bool operator==(const T& other) const final { return false; }
+		/*{
+			auto&& unresolved_other = static_cast<const unresolved&>(other);
 			return *identifier == *unresolved_other.identifier;
-		}
+		}*/
 	};
 
 	static context* analyze(std::span<statement> statements);

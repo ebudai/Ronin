@@ -15,29 +15,33 @@ namespace ronin
 		return true;
 	}
 
-	bool parameters::parameter::operator==(const parameters::parameter& other) const
-	{
-		return name == other.name && *type == *other.type;
-	}
-
 	template <statement::type T> void analyze(context*, statement);
 
-	template <> void analyze<statement::type::importer>(context* context, statement statement)
+	template <> void analyze<statement::type::importer>(context* context, const statement statement)
 	{
-		auto import = static_cast<importer*>(statement.get());
-		auto name = new identifier{import->name->begin(), import->name->end()};
-		auto imported = new unresolved<ronin::context>(name);
-		//context->imports.push_back(imported);
+		const auto import = static_cast<importer*>(statement.get());
+		const auto name = new identifier{import->name->begin(), import->name->end()};
+		const auto imported = new unresolved<module>(name);
+		context->import(imported);
 	}
 
-	template <> void analyze<statement::type::exporter>(context* context, statement statement)
+	template <> void analyze<statement::type::exporter>(context* context, const statement statement)
 	{
-				
+		const auto exporter = static_cast<ronin::exporter*>(statement.get());
+		const auto mod = main::module[*exporter->name];
+		mod->submodules.push_back(context);
+	}
+
+	template <> void analyze<statement::type::literal>(context* context, const statement statement)
+	{
+		// we should only be here if there is only one statement
+		const auto literal = static_cast<ronin::literal*>(statement.get());
+
 	}
 
 	context* analyze(span<statement> statements)
 	{
-		auto context = new ronin::context;
+		const auto context = new ronin::context;
 
 		using enum statement::type;
 

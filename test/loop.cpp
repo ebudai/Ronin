@@ -30,5 +30,5 @@ namespace unit
 		{ "", nothing }
 	};
 
-	INSTANTIATE_TEST_CASE_P(parser, loop, ::testing::Values(span{ loop_tokens }));
+	INSTANTIATE_TEST_SUITE_P(parser, loop, ::testing::Values(span{ loop_tokens }));
 }
