@@ -1,4 +1,4 @@
-#include "parser.h"
+#include "grammar.h"
 #include "error.h"
 #include "lexicon.h"
 #include "lib/magic_enum.hpp"
@@ -14,21 +14,21 @@ namespace ronin
 		if (tokens.front() != open_t) return nullptr;
 
 		vector<element_t*> elements;
-		span<token> parser = tokens.subspan(1);
+		span<token> parsed = tokens.subspan(1);
 
-		while (parser.front().is_not<nothing>())
+		while (parsed.front().is_not<nothing>())
 		{
-			if (auto const element = ronin::parse<element_t>(parser))
+			if (auto const element = ronin::parse<element_t>(parsed))
 			{
 				elements.push_back(element);
-				if (parser.front() == separator_t) parser = parser.subspan(1);
+				if (parsed.front() == separator_t) parsed = parsed.subspan(1);
 				continue;
 			}
-			if (parser.front() == close_t) break;
+			if (parsed.front() == close_t) break;
 			return nullptr;
 		}
 
-		tokens = parser.subspan(1);
+		tokens = parsed.subspan(1);
 		return new aggregate{ elements };
 	}
 
@@ -74,16 +74,16 @@ namespace ronin
 	{
 		if (tokens.front().is<module>())
 		{
-			span<token> parser = tokens.subspan(1);
+			span<token> parsed = tokens.subspan(1);
 
-			if (auto const name = parse<ronin::words>(parser))
+			if (auto const name = parse<ronin::words>(parsed))
 			{
 				auto const exporter = new ronin::exporter{ tokens.front(), name };
-				tokens = parser;
+				tokens = parsed;
 				return exporter;
 			}
 
-			return new bad<exporter>::expected("name", tokens = parser);
+			return new bad<exporter>::expected("name", tokens = parsed);
 		}
 		
 		return nullptr;
@@ -93,16 +93,16 @@ namespace ronin
 	{
 		if (tokens.front().is<import>()) 
 		{
-			span<token> parser = tokens.subspan(1);
+			span<token> parsed = tokens.subspan(1);
 
-			if (auto const name = parse<ronin::words>(parser))
+			if (auto const name = parse<ronin::words>(parsed))
 			{
 				auto const importer = new ronin::importer{ tokens.front(), name };
-				tokens = parser;
+				tokens = parsed;
 				return importer;
 			}
 
-			return new bad<importer>::expected("name", tokens = parser);
+			return new bad<importer>::expected("name", tokens = parsed);
 		}
 
 		return nullptr;
@@ -136,11 +136,11 @@ namespace ronin
 		if (tokens.front().is_keyword()) return nullptr;
 
 		vector<reference::component*> components;
-		span<token> parser = tokens;
+		span<token> parsed = tokens;
 
-		while (parser.front().is_not<nothing>())
+		while (parsed.front().is_not<nothing>())
 		{
-			if (auto const component = parse<reference::component>(parser)) components.push_back(component);
+			if (auto const component = parse<reference::component>(parsed)) components.push_back(component);
 			else break;
 		}
 
@@ -148,7 +148,7 @@ namespace ronin
 		{
 			if (std::holds_alternative<words>(*component))
 			{
-				tokens = parser;
+				tokens = parsed;
 				return new reference{ std::move(components) };
 			}
 		}
@@ -163,22 +163,22 @@ namespace ronin
 
 	template <> delegate_declaration* parse(span<token>& tokens)
 	{
-		span<token> parser = tokens;
-		
-		if (auto const parameter_block = variant_parser<delegate_declaration::parameter_block>::parse(parser))
-		{
-			if (parser.front().is<returns>())
-			{
-				parser = parser.subspan(1);
+		span<token> parsed = tokens;
 
-				if (auto const expression = parse<ronin::expression>(parser))
+		if (auto const parameter_block = variant_parser<delegate_declaration::parameter_block>::parse(parsed))
+		{
+			if (parsed.front().is<returns>())
+			{
+				parsed = parsed.subspan(1);
+
+				if (auto const expression = parse<ronin::expression>(parsed))
 				{
-					tokens = parser;
+					tokens = parsed;
 					return new delegate_declaration{ parameter_block, expression };
 				}
 
 				delete parameter_block;
-				return new bad<delegate_declaration>::expected("single or compound statement", tokens = parser);
+				return new bad<delegate_declaration>::expected("single or compound statement", tokens = parsed);
 			}
 
 			delete parameter_block;
@@ -204,23 +204,23 @@ namespace ronin
 
 	template <> association* parse(span<token>& tokens)
 	{
-		span<token> parser = tokens;
-		
-		if (auto const destination = parse<reference>(parser))
+		span<token> parsed = tokens;
+
+		if (auto const destination = parse<reference>(parsed))
 		{
-			const token symbol = parser.front();
+			const token symbol = parsed.front();
 			if (symbol.is<assign>())
 			{
-				parser = parser.subspan(1);
+				parsed = parsed.subspan(1);
 
-				if (auto const expression = parse<ronin::expression>(parser))
+				if (auto const expression = parse<ronin::expression>(parsed))
 				{
-					tokens = parser;
+					tokens = parsed;
 					return new association{ destination, symbol, expression };
 				}
 
 				delete destination;
-				return new bad<association>::expected("expression", tokens = parser);
+				return new bad<association>::expected("expression", tokens = parsed);
 			}
 
 			delete destination;	
@@ -235,81 +235,81 @@ namespace ronin
 
 		if (keyword.is_not<iterate>()) return nullptr;
 		
-		span<token> parser = tokens.subspan(1);
+		span<token> parsed = tokens.subspan(1);
 
-		if (auto const iterator = parse<reference>(parser))
+		if (auto const iterator = parse<reference>(parsed))
 		{
-			if (const token returning = parser.front(); returning.is<returns>())
+			if (const token returning = parsed.front(); returning.is<returns>())
 			{
-				parser = parser.subspan(1);
+				parsed = parsed.subspan(1);
 
-				if (auto const name = parse<ronin::words>(parser))
+				if (auto const name = parse<ronin::words>(parsed))
 				{
 					token equals;
-					if (parser.front().is<assign>())
+					if (parsed.front().is<assign>())
 					{
-						equals = parser.front();
-						parser = parser.subspan(1);
+						equals = parsed.front();
+						parsed = parsed.subspan(1);
 					}
 
-					if (auto const body = parse<expression>(parser))
+					if (auto const body = parse<expression>(parsed))
 					{
-						tokens = parser;
+						tokens = parsed;
 						return new loop{ keyword, iterator, returning, name, equals, body };
 					}
 
 					delete name;
 					delete iterator;
-					return new bad<loop>::expected("expression", tokens = parser);
+					return new bad<loop>::expected("expression", tokens = parsed);
 				}
 
 				delete iterator;
-				return new bad<loop>::expected("name", tokens = parser);
+				return new bad<loop>::expected("name", tokens = parsed);
 			}
 
 			delete iterator;
-			return new bad<loop>::expected(lexicon::returns, tokens = parser);
+			return new bad<loop>::expected(lexicon::returns, tokens = parsed);
 		}
 
-		return new bad<loop>::expected("reference", tokens = parser);
+		return new bad<loop>::expected("reference", tokens = parsed);
 	}
 
 	template <> parameter* parse(span<token>& tokens)
 	{
-		span<token> parser = tokens;
+		span<token> parsed = tokens;
 
-		if (auto const name = parse<ronin::words>(parser))
+		if (auto const name = parse<ronin::words>(parsed))
 		{
 			token returning;
 			reference* type = nullptr;
-			if (parser.front().is<returns>())
+			if (parsed.front().is<returns>())
 			{
-				returning = parser.front();
-				parser = parser.subspan(1);
-				type = parse<reference>(parser);
+				returning = parsed.front();
+				parsed = parsed.subspan(1);
+				type = parse<reference>(parsed);
 				if (type == nullptr)
 				{
 					delete name;
-					return new bad<parameter>::expected("type", tokens = parser);
+					return new bad<parameter>::expected("type", tokens = parsed);
 				}
 			}
 
 			token equals;
 			expression* initalizer = nullptr;
-			if (parser.front().is<assign>())
+			if (parsed.front().is<assign>())
 			{
-				equals = parser.front();
-				parser = parser.subspan(1);
-				initalizer = parse<expression>(parser);
+				equals = parsed.front();
+				parsed = parsed.subspan(1);
+				initalizer = parse<expression>(parsed);
 				if (initalizer == nullptr)
 				{
 					delete name;
 					delete type;
-					return new bad<parameter>::expected("initializer", tokens = parser);
+					return new bad<parameter>::expected("initializer", tokens = parsed);
 				}
 			}
 
-			tokens = parser;
+			tokens = parsed;
 			return new parameter{ name, returning, type, equals, initalizer };
 		}
 
@@ -321,11 +321,11 @@ namespace ronin
 		const token keyword = tokens.front();
 		if (keyword.is<var>() || keyword.is<let>())
 		{
-			auto parser = tokens.subspan(1);
+			auto parsed = tokens.subspan(1);
 
-			if (auto const declaration = parse<parameter>(parser))
+			if (auto const declaration = parse<parameter>(parsed))
 			{
-				tokens = parser;
+				tokens = parsed;
 				return new data_declaration{ keyword, declaration };
 			}
 		}
@@ -343,17 +343,17 @@ namespace ronin
 		if (tokens.front().is_keyword()) return nullptr;
 
 		vector<name::component*> components;
-		span<token> parser = tokens;
+		span<token> parsed = tokens;
 
-		while (parser.front().is_not<nothing>())
+		while (parsed.front().is_not<nothing>())
 		{
-			if (auto const component = parse<name::component>(parser)) components.push_back(component);
+			if (auto const component = parse<name::component>(parsed)) components.push_back(component);
 			else break;
 		}
 
 		if (components.empty()) return nullptr;
 
-		tokens = parser;
+		tokens = parsed;
 		return new name{ components };
 	}
 
@@ -362,46 +362,46 @@ namespace ronin
 		const token keyword = tokens.front();
 		if (keyword.is_not<let>()) return nullptr;
 		
-		span<token> parser = tokens.subspan(1);
+		span<token> parsed = tokens.subspan(1);
 
-		if (auto const identifier = parse<ronin::name>(parser))
+		if (auto const identifier = parse<ronin::name>(parsed))
 		{
 			token returning;
 			reference* type = nullptr;
-			if (parser.front().is<returns>())
+			if (parsed.front().is<returns>())
 			{
-				returning = parser.front();
-				parser = parser.subspan(1);
-				type = parse<reference>(parser);
+				returning = parsed.front();
+				parsed = parsed.subspan(1);
+				type = parse<reference>(parsed);
 				if (type == nullptr)
 				{
 					delete identifier;
-					return new bad<function_declaration>::expected("type", tokens = parser);
+					return new bad<function_declaration>::expected("type", tokens = parsed);
 				}
 			}
 
-			if (parser.front().is<assign>())
+			if (parsed.front().is<assign>())
 			{
-				const token equals = parser.front();
-				parser = parser.subspan(1);
+				const token equals = parsed.front();
+				parsed = parsed.subspan(1);
 
-				if (auto const definition = parse<ronin::expression>(parser))
+				if (auto const definition = parse<ronin::expression>(parsed))
 				{
-					tokens = parser;
+					tokens = parsed;
 					return new function_declaration{ keyword, identifier, returning, type, equals, definition };
 				}
 
 				delete type;
 				delete identifier;
-				return new bad<function_declaration>::expected("function definition", tokens = parser);
+				return new bad<function_declaration>::expected("function definition", tokens = parsed);
 			}
 
 			delete type;
 			delete identifier;
-			return new bad<function_declaration>::expected({ (char)assign }, tokens = parser);
+			return new bad<function_declaration>::expected({ (char)assign }, tokens = parsed);
 		}
 
-		return new bad<function_declaration>::expected("identifier", tokens = parser);
+		return new bad<function_declaration>::expected("identifier", tokens = parsed);
 	}
 
 	template <> declaration* parse(span<token>& tokens)
@@ -411,13 +411,13 @@ namespace ronin
 
 	template <> type_declaration::body* parse<type_declaration::body>(span<token>& tokens)
 	{
-		span<token> parser = tokens;
-		auto const algebra = parse<reference>(parser);
-		auto const body = definition::parse(parser);
+		span<token> parsed = tokens;
+		auto const algebra = parse<reference>(parsed);
+		auto const body = definition::parse(parsed);
 
 		if (algebra || body)
 		{
-			tokens = parser;
+			tokens = parsed;
 			return new type_declaration::body{ algebra, body };
 		}
 
@@ -429,31 +429,31 @@ namespace ronin
 		const token keyword = tokens.front();
 		if (keyword.is_not<type>()) return nullptr;
 		
-		span<token> parser = tokens.subspan(1);
+		span<token> parsed = tokens.subspan(1);
 
-		if (auto const identifier = parse<ronin::name>(parser))
+		if (auto const identifier = parse<ronin::name>(parsed))
 		{
-			if (parser.front().is<assign>())
+			if (parsed.front().is<assign>())
 			{
-				const token equals = parser.front();
-				parser = parser.subspan(1);
-				
+				const token equals = parsed.front();
+				parsed = parsed.subspan(1);
+
 				vector<type_declaration::body> definitions;
-				while (auto const definition = parse<type_declaration::body>(parser))
+				while (auto const definition = parse<type_declaration::body>(parsed))
 				{
 					definitions.push_back(*definition);
 					delete definition;
-				}				
+				}
 
-				tokens = parser;
+				tokens = parsed;
 				return new type_declaration{ keyword, identifier, equals, std::move(definitions) };
 			}
 
 			delete identifier;
-			return new bad<type_declaration>::expected({ (char)assign }, tokens = parser);
+			return new bad<type_declaration>::expected({ (char)assign }, tokens = parsed);
 		}
 
-		return new bad<type_declaration>::expected("identifier", tokens = parser);
+		return new bad<type_declaration>::expected("identifier", tokens = parsed);
 	}
 
 	template <> extension* parse(span<token>& tokens)
@@ -461,21 +461,21 @@ namespace ronin
 		const token keyword = tokens.front();
 		if (keyword.is_not<extend>()) return nullptr;
 
-		span<token> parser = tokens.subspan(1);
+		span<token> parsed = tokens.subspan(1);
 
-		if (auto const identifier = parse<ronin::name>(parser))
+		if (auto const identifier = parse<ronin::name>(parsed))
 		{
-			if (auto const definition = parse<type_declaration::body>(parser))
+			if (auto const definition = parse<type_declaration::body>(parsed))
 			{
-				tokens = parser;
+				tokens = parsed;
 				return new extension{ keyword, identifier, definition };
 			}
-				
+
 			delete identifier;
-			return new bad<extension>::expected("definition", tokens = parser);
+			return new bad<extension>::expected("definition", tokens = parsed);
 		}
 
-		return new bad<extension>::expected("identifier", tokens = parser);
+		return new bad<extension>::expected("identifier", tokens = parsed);
 	}
 
 	template <> unknown* parse(span<token>& tokens)

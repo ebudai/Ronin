@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../parser.h"
+#include "../grammar.h"
 #include "gtest/gtest.h"
 #include <span>
 

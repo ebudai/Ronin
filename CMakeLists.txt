@@ -18,7 +18,7 @@ add_executable(Ronin
         lexer.h
         lexicon.h
         parse.cpp
-        parser.h
+        grammar.h
         ronin.cpp
         semantics.cpp
         semantics.h

@@ -34,6 +34,8 @@ namespace ronin
 			returns,
 			open_paren = '(',
 			close_paren = ')',
+			open_bracket = '[',
+			close_bracket = ']',
 			open_brace = '{',
 			close_brace = '}',
 			delegation = '?',

@@ -15,8 +15,8 @@ namespace ronin
 
 		virtual std::vector<member*> operator[](std::span<identifier::value_type> identifier);
 
-		void import(module* module);
-		void add(const member& member);
+		void import(module* module) {} //TODO
+		void add(const member& member) {} //TODO
 
 	protected:
 
@@ -32,18 +32,18 @@ namespace ronin
 	{
 		~scope() override = default;
 
-		std::vector<member*> operator[](std::span<identifier::value_type> identifier) override;
+		std::vector<member*> operator[](std::span<identifier::value_type> identifier) override { return {}; } //TODO
 
 		context* parent;
 		std::vector<resolution> lines;
 	};
 
-	struct module final : context
+	struct module : context
 	{
 		~module() override = default;
 
-		std::vector<member*> operator[](std::span<identifier::value_type> identifier) override;
-		module* operator[](words name);
+		std::vector<member*> operator[](std::span<identifier::value_type> identifier) override { return {}; } //TODO
+		module* operator[](words name) { return nullptr; } //TODO
 
 		token name;
 		std::vector<context*> submodules;

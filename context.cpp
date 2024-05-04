@@ -31,7 +31,7 @@ namespace ronin
 		int sublength = 1;
 		for (member& member : members)
 		{
-			if (*member.identifier == identifier.subspan((0, sublength)))
+			if (*member.identifier == identifier.subspan(0, sublength))
 			{
 
 			}

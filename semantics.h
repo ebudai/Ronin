@@ -1,6 +1,6 @@
 #pragma once
 
-#include "parser.h"
+#include "grammar.h"
 
 namespace ronin
 {
@@ -21,12 +21,10 @@ namespace ronin
 
 	struct type;
 
-	struct temporary
-	{
+	struct deletate;
+	//using temporary = std::variant<literal, delegate, >;
 
-	};
-
-	using value = std::variant<resolution, temporary>;
+	//using value = std::variant<resolution, temporary>;
 
 	struct variable : member
 	{
@@ -91,13 +89,13 @@ namespace ronin
 
 
 
-	template <typename T> struct unresolved : T
+	template <typename T> struct unresolved final : T
 	{
 		identifier* identifier;
 
 		explicit unresolved(ronin::identifier* identifier) : identifier(identifier) {}
 
-		bool operator==(const T& other) const final { return false; }
+		virtual bool operator==(const T& other) const { return false; }
 		/*{
 			auto&& unresolved_other = static_cast<const unresolved&>(other);
 			return *identifier == *unresolved_other.identifier;

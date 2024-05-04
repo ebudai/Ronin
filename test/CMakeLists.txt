@@ -4,7 +4,7 @@ set(EXECUTABLE_OUTPUT_PATH "..")
 set(CMAKE_CXX_STANDARD 26)
 
 find_package(ICU REQUIRED)
-add_executable(Test ../lexer.h ../lex.cpp ../parser.h ../parse.cpp
+add_executable(Test ../lexer.h ../lex.cpp ../grammar.h ../parse.cpp
     association.cpp
     block.cpp
     date_literal.cpp
