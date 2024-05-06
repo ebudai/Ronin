@@ -539,7 +539,7 @@ namespace mz
 	MZ_PURE_GETTER
 	constexpr const T& clamp(const T& val, const T& low, const T& high) noexcept
 	{
-		return val < low ? low : ((high < val) ? high : val);
+		return val < low ? low : high < val ? high : val;
 	}
 
 #endif // MZ_HAS_SNIPPET_CLAMP
@@ -558,10 +558,10 @@ namespace mz
 
 		using bit_type = std::conditional_t<(sizeof(unsigned) > sizeof(T)), unsigned, T>;
 		int count	   = 0;
-		bit_type bit   = bit_type{ 1 } << (sizeof(T) * CHAR_BIT - 1);
+		bit_type bit   = bit_type{ 1 } << sizeof(T) * CHAR_BIT - 1;
 		while (true)
 		{
-			if ((bit & val))
+			if (bit & val)
 				break;
 			count++;
 			bit >>= 1;
@@ -603,8 +603,8 @@ namespace mz
 		{
 			if (!val)
 				return T{ 1 };
-			return T{ 1 } << (sizeof(T) * size_t{ CHAR_BIT }
-							  - static_cast<size_t>(countl_zero(static_cast<T>(val - T{ 1 }))));
+			return T{ 1 } << sizeof(T) * size_t{ CHAR_BIT }
+			       - static_cast<size_t>(countl_zero(static_cast<T>(val - T{ 1 })));
 		}
 	}
 
@@ -625,7 +625,7 @@ namespace mz
 		{
 			if (!val)
 				return T{ 0 };
-			return T{ 1 } << (sizeof(T) * size_t{ CHAR_BIT } - size_t{ 1 } - static_cast<size_t>(countl_zero(val)));
+			return T{ 1 } << sizeof(T) * size_t{ CHAR_BIT } - size_t{ 1 } - static_cast<size_t>(countl_zero(val));
 		}
 	}
 
@@ -667,7 +667,7 @@ namespace mz
 			return has_single_bit(static_cast<std::underlying_type_t<T>>(val));
 		else
 		{
-			return val != T{} && (val & (val - T{ 1 })) == T{};
+			return val != T{} && (val & val - T{ 1 }) == T{};
 		}
 	}
 
@@ -720,7 +720,7 @@ namespace mz
 	MZ_ATTR(assume_aligned(N))
 	constexpr T* assume_aligned(T* ptr) noexcept
 	{
-		static_assert(N > 0 && (N & (N - 1u)) == 0u, "assume_aligned() requires a power-of-two alignment value.");
+		static_assert(N > 0 && (N & N - 1u) == 0u, "assume_aligned() requires a power-of-two alignment value.");
 		static_assert(!std::is_function_v<T>, "assume_aligned may not be used on functions.");
 
 		MZ_IF_CONSTEVAL
@@ -729,7 +729,7 @@ namespace mz
 		}
 		else
 		{
-			MZ_ASSUME((reinterpret_cast<uintptr_t>(ptr) & (N - uintptr_t{ 1 })) == 0);
+			MZ_ASSUME((reinterpret_cast<uintptr_t>(ptr) & N - uintptr_t{ 1 }) == 0);
 
 			if constexpr (std::is_volatile_v<T>)
 			{
@@ -803,11 +803,11 @@ namespace mz::detail
 
 	template <size_t Bits>
 	using tptr_uint_for_bits =
-		std::conditional_t<(Bits <= sizeof(unsigned char) * CHAR_BIT), unsigned char,
-		std::conditional_t<(Bits <= sizeof(unsigned short) * CHAR_BIT), unsigned short,
-		std::conditional_t<(Bits <= sizeof(unsigned int) * CHAR_BIT), unsigned int,
-		std::conditional_t<(Bits <= sizeof(unsigned long) * CHAR_BIT), unsigned long,
-		std::conditional_t<(Bits <= sizeof(unsigned long long) * CHAR_BIT), unsigned long long,
+		std::conditional_t<Bits <= sizeof(unsigned char) * CHAR_BIT, unsigned char,
+		std::conditional_t<Bits <= sizeof(unsigned short) * CHAR_BIT, unsigned short,
+		std::conditional_t<Bits <= sizeof(unsigned int) * CHAR_BIT, unsigned int,
+		std::conditional_t<Bits <= sizeof(unsigned long) * CHAR_BIT, unsigned long,
+		std::conditional_t<Bits <= sizeof(unsigned long long) * CHAR_BIT, unsigned long long,
 		void
 	>>>>>;
 
@@ -860,9 +860,7 @@ namespace mz::detail
 		static constexpr uintptr_t pack_ptr_unchecked(const uintptr_t ptr) noexcept
 		{
 			if constexpr (tptr_free_bits > 0)
-				return (ptr << tptr_free_bits);
-			else
-				return ptr;
+				return ptr << tptr_free_bits;
 		}
 
 	  public:
@@ -874,7 +872,7 @@ namespace mz::detail
 	class MZ_TRIVIAL_ABI tptr_aligned_base : public tptr_base
 	{
 	  protected:
-		static constexpr size_t tag_bits	= (mz::max<size_t>(mz::bit_width(Align), 1u) - 1u) + detail::tptr_free_bits;
+		static constexpr size_t tag_bits	= mz::max<size_t>(bit_width(Align), 1u) - 1u + tptr_free_bits;
 		static constexpr uintptr_t tag_mask = bit_fill_right<uintptr_t>(tag_bits);
 		static constexpr uintptr_t ptr_mask = ~tag_mask;
 
@@ -887,7 +885,7 @@ namespace mz::detail
 		using base::base;
 
 		MZ_CONST_GETTER
-		static constexpr bool can_store_ptr(uintptr_t ptr) noexcept
+		static constexpr bool can_store_ptr(const uintptr_t ptr) noexcept
 		{
 			if constexpr (!tag_bits)
 			{
@@ -895,7 +893,7 @@ namespace mz::detail
 			}
 			else
 			{
-				return !(base::pack_ptr_unchecked(ptr) & tag_mask);
+				return !(pack_ptr_unchecked(ptr) & tag_mask);
 			}
 		}
 
@@ -907,7 +905,7 @@ namespace mz::detail
 			{
 				return false;
 			}
-			else if constexpr ((sizeof(Tag) * CHAR_BIT) <= tag_bits				 //
+			else if constexpr (sizeof(Tag) * CHAR_BIT <= tag_bits				 //
 							   && std::is_trivially_default_constructible_v<Tag> //
 							   && std::is_trivially_copyable_v<Tag>)
 			{
@@ -924,11 +922,11 @@ namespace mz::detail
 		}
 
 		MZ_CONST_GETTER
-		static uintptr_t pack_ptr(uintptr_t ptr) noexcept
+		static uintptr_t pack_ptr(const uintptr_t ptr) noexcept
 		{
 			MZ_ASSERT((!ptr || mz::bit_floor(ptr) >= Align) && "The pointer's address is aligned too strictly aligned");
 
-			return base::pack_ptr_unchecked(ptr);
+			return pack_ptr_unchecked(ptr);
 		}
 
 		template <typename Tag>
@@ -945,11 +943,11 @@ namespace mz::detail
 			{
 				if constexpr (std::is_integral_v<Tag>)
 				{
-					if constexpr ((sizeof(Tag) * CHAR_BIT) > tag_bits)
+					if constexpr (sizeof(Tag) * CHAR_BIT > tag_bits)
 					{
 						MZ_ASSERT(can_store_tag(tag) && "Tag value cannot be used without truncation");
 
-						return pack_ptr(ptr) | (static_cast<uintptr_t>(tag) & tag_mask);
+						return pack_ptr(ptr) | static_cast<uintptr_t>(tag) & tag_mask;
 					}
 					else
 					{
@@ -961,7 +959,7 @@ namespace mz::detail
 					MZ_TAGGED_PTR_TAG_OBJECT_CHECKS(Tag);
 
 					uintptr_t bits;
-					if constexpr ((sizeof(Tag) * CHAR_BIT) < tag_bits)
+					if constexpr (sizeof(Tag) * CHAR_BIT < tag_bits)
 					{
 						bits = pack_ptr(ptr) & ptr_mask;
 					}
@@ -976,11 +974,11 @@ namespace mz::detail
 		}
 
 		MZ_CONST_GETTER
-		static uintptr_t set_ptr(uintptr_t bits, uintptr_t ptr) noexcept
+		static uintptr_t set_ptr(const uintptr_t bits, const uintptr_t ptr) noexcept
 		{
 			if constexpr (tag_bits)
 			{
-				return pack_ptr(ptr) | (bits & tag_mask);
+				return pack_ptr(ptr) | bits & tag_mask;
 			}
 			else
 			{
@@ -998,15 +996,15 @@ namespace mz::detail
 			{
 				return set_tag(bits, static_cast<tptr_make_unsigned<Tag>>(tag));
 			}
-			else if constexpr ((sizeof(Tag) * CHAR_BIT) > tag_bits)
+			else if constexpr (sizeof(Tag) * CHAR_BIT > tag_bits)
 			{
 				MZ_ASSERT(can_store_tag(tag) && "Tag value cannot be used without truncation");
 
-				return (bits & ptr_mask) | (static_cast<uintptr_t>(tag) & tag_mask);
+				return bits & ptr_mask | static_cast<uintptr_t>(tag) & tag_mask;
 			}
 			else
 			{
-				return (bits & ptr_mask) | static_cast<uintptr_t>(tag);
+				return bits & ptr_mask | static_cast<uintptr_t>(tag);
 			}
 		}
 
@@ -1016,7 +1014,7 @@ namespace mz::detail
 		{
 			MZ_TAGGED_PTR_TAG_OBJECT_CHECKS(Tag);
 
-			if constexpr ((sizeof(Tag) * CHAR_BIT) < tag_bits)
+			if constexpr (sizeof(Tag) * CHAR_BIT < tag_bits)
 			{
 				bits &= ptr_mask;
 			}
@@ -1025,7 +1023,7 @@ namespace mz::detail
 		}
 
 		MZ_CONST_INLINE_GETTER
-		static uintptr_t get_tag([[maybe_unused]] uintptr_t bits) noexcept
+		static uintptr_t get_tag([[maybe_unused]] const uintptr_t bits) noexcept
 		{
 			if constexpr (tag_bits)
 			{
@@ -1038,27 +1036,27 @@ namespace mz::detail
 		}
 
 		MZ_CONST_GETTER
-		static bool get_tag_bit(uintptr_t bits, size_t index) noexcept
+		static bool get_tag_bit(const uintptr_t bits, const size_t index) noexcept
 		{
 			MZ_ASSERT(index < tag_bits && "Tag bit index out-of-bounds");
 
-			return bits & (uintptr_t{ 1 } << index);
+			return bits & uintptr_t{ 1 } << index;
 		}
 
 		MZ_CONST_GETTER
-		static uintptr_t set_tag_bit(uintptr_t bits, size_t index, bool state) noexcept
+		static uintptr_t set_tag_bit(const uintptr_t bits, const size_t index, const bool state) noexcept
 		{
 			MZ_ASSERT(index < tag_bits && "Tag bit index out-of-bounds");
 
 			if (state)
-				return bits | (uintptr_t{ 1 } << index);
+				return bits | uintptr_t{ 1 } << index;
 			else
-				return bits & (~(uintptr_t{ 1 } << index));
+				return bits & ~(uintptr_t{ 1 } << index);
 		}
 
 		template <typename Tag>
 		MZ_CONST_GETTER
-		static Tag get_tag_as_object(uintptr_t bits) noexcept
+		static Tag get_tag_as_object(const uintptr_t bits) noexcept
 		{
 			MZ_TAGGED_PTR_TAG_OBJECT_CHECKS(Tag);
 
@@ -1078,7 +1076,7 @@ namespace mz::detail
 		MZ_CONST_GETTER
 		static uintptr_t get_ptr_impl(uintptr_t bits) noexcept
 		{
-			static_assert((FreeBits + UsedBits) == sizeof(uintptr_t) * CHAR_BIT);
+			static_assert(FreeBits + UsedBits == sizeof(uintptr_t) * CHAR_BIT);
 
 			bits &= ptr_mask;
 			if constexpr (FreeBits > 0)
@@ -1099,7 +1097,7 @@ namespace mz::detail
 
 	  public:
 		MZ_CONST_INLINE_GETTER
-		static uintptr_t get_ptr(uintptr_t bits) noexcept
+		static uintptr_t get_ptr(const uintptr_t bits) noexcept
 		{
 			return get_ptr_impl<tptr_free_bits, tptr_used_bits>(bits);
 		}
@@ -1185,7 +1183,7 @@ namespace mz::detail
 	};
 
 	// primary template; T is an object
-	template <typename T, size_t Align, bool = (!std::is_function_v<T> && !std::is_void_v<T>)>
+	template <typename T, size_t Align, bool = !std::is_function_v<T> && !std::is_void_v<T>>
 	struct MZ_TRIVIAL_ABI tptr_to_object : public tptr_to_function<T, Align>
 	{
 	  protected:
@@ -1227,7 +1225,7 @@ namespace mz::detail
 	struct tptr_nullptr_deduced_tag
 	{};
 
-	template <typename T, bool = (std::is_void_v<T> || std::is_function_v<T>)>
+	template <typename T, bool = std::is_void_v<T> || std::is_function_v<T>>
 	inline constexpr size_t tptr_min_align = alignof(T);
 	template <typename T>
 	inline constexpr size_t tptr_min_align<T, true> = 1;

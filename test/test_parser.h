@@ -6,7 +6,7 @@
 
 namespace unit
 {
-	struct test_parser : ::testing::TestWithParam<std::span<ronin::token>>
+	struct test_parser : testing::TestWithParam<std::span<ronin::token>>
 	{
 		void SetUp() final { statements = parse(GetParam()); }
 

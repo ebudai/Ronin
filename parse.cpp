@@ -8,6 +8,8 @@ using enum ronin::token::type;
 
 namespace ronin
 {
+	template <typename T> static T* parse(span<token>& tokens);
+
 	template <char open_t, typename element_t, char separator_t, char close_t>
 	auto aggregate<open_t, element_t, separator_t, close_t>::parse(span<token>& tokens) -> aggregate*
 	{
@@ -31,8 +33,6 @@ namespace ronin
 		tokens = parsed.subspan(1);
 		return new aggregate{ elements };
 	}
-
-	template <typename T> static T* parse(span<token>& tokens);
 
 	template <typename T> struct variant_parser;
 	template <typename... Ts> struct variant_parser<variant<Ts...>>
@@ -76,9 +76,9 @@ namespace ronin
 		{
 			span<token> parsed = tokens.subspan(1);
 
-			if (auto const name = parse<ronin::words>(parsed))
+			if (auto const name = parse<words>(parsed))
 			{
-				auto const exporter = new ronin::exporter{ tokens.front(), name };
+				auto const exporter = new ronin::exporter{ tokens.front(), *name };
 				tokens = parsed;
 				return exporter;
 			}
@@ -95,9 +95,9 @@ namespace ronin
 		{
 			span<token> parsed = tokens.subspan(1);
 
-			if (auto const name = parse<ronin::words>(parsed))
+			if (auto const name = parse<words>(parsed))
 			{
-				auto const importer = new ronin::importer{ tokens.front(), name };
+				auto const importer = new ronin::importer{ tokens.front(), *name };
 				tokens = parsed;
 				return importer;
 			}
@@ -208,8 +208,7 @@ namespace ronin
 
 		if (auto const destination = parse<reference>(parsed))
 		{
-			const token symbol = parsed.front();
-			if (symbol.is<assign>())
+			if (const token symbol = parsed.front(); symbol.is<assign>())
 			{
 				parsed = parsed.subspan(1);
 
@@ -318,8 +317,7 @@ namespace ronin
 
 	template <> data_declaration* parse(span<token>& tokens)
 	{
-		const token keyword = tokens.front();
-		if (keyword.is<var>() || keyword.is<let>())
+		if (const token keyword = tokens.front(); keyword.is<var>() || keyword.is<let>())
 		{
 			auto parsed = tokens.subspan(1);
 
@@ -328,6 +326,8 @@ namespace ronin
 				tokens = parsed;
 				return new data_declaration{ keyword, declaration };
 			}
+
+			return new bad<data_declaration>::expected("declaration", tokens = parsed);
 		}
 
 		return nullptr;
@@ -364,7 +364,7 @@ namespace ronin
 		
 		span<token> parsed = tokens.subspan(1);
 
-		if (auto const identifier = parse<ronin::name>(parsed))
+		if (auto const identifier = parse<name>(parsed))
 		{
 			token returning;
 			reference* type = nullptr;
@@ -431,7 +431,7 @@ namespace ronin
 		
 		span<token> parsed = tokens.subspan(1);
 
-		if (auto const identifier = parse<ronin::name>(parsed))
+		if (auto const identifier = parse<name>(parsed))
 		{
 			if (parsed.front().is<assign>())
 			{
@@ -483,11 +483,15 @@ namespace ronin
 		size_t length = 0;
 		
 		while (tokens[length].is_not<terminal>()
+			&& tokens[length].is_not<separator>()
 			&& tokens[length].is_not<close_brace>()
+			&& tokens[length].is_not<close_bracket>()
+			&& tokens[length].is_not<close_paren>()
 			&& tokens[length].is_not<nothing>()) ++length;
 		
 		if (length)
 		{
+			if (tokens[length].is_not<nothing>()) ++length;
 			auto const unknown = new ronin::unknown{ .tokens = { tokens.begin(), length } };
 			tokens = tokens.subspan(length);
 			return unknown;

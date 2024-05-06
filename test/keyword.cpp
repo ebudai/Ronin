@@ -1,4 +1,5 @@
 #include "test_lexer.h"
+#include "../lib/magic_enum.hpp"
 
 using namespace ronin;
 

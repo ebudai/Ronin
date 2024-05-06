@@ -60,7 +60,7 @@ namespace ronin
 	using declaration = std::variant<data_declaration, function_declaration, type_declaration, extension>;
 	using list = aggregate<'[', reference, ',', ']'>;
 	using input = aggregate<'(', reference, ',', ')'>;
-	using lookup = aggregate<'{', association, ',', '}'>;	
+	using lookup = aggregate<'{', association, ',', '}'>;
 	using expression = std::variant<reference, literal, delegate_declaration, list, input, lookup, data_declaration, function_declaration, type_declaration, extension, block>;
 
 	struct reference
@@ -73,13 +73,13 @@ namespace ronin
 	struct importer
 	{
 		token keyword;
-		words* name;
+		words name;
 	};
 
 	struct exporter
 	{
 		token keyword;
-		words* name;
+		words name;
 	};
 
 	struct association

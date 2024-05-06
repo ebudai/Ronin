@@ -4,7 +4,7 @@
 
 namespace ronin
 {
-	struct token : mz::tagged_ptr<const char>
+	struct token //: mz::tagged_ptr<const char>
 	{
 		enum class type : uint16_t
 		{
@@ -47,10 +47,18 @@ namespace ronin
 			nothing,
 		};
 
-		token() : tagged_ptr("", type::nothing) { }
-		token(std::nullptr_t, type) = delete;
+		token(const char* text, type type) : tokentype(type), text(text) {}
+		token() : token("", type::nothing) {}
+		//token() : tagged_ptr("", type::nothing) { }
+		//token(std::nullptr_t, type) = delete;
 
-		using tagged_ptr::tagged_ptr;
+		//using tagged_ptr::tagged_ptr;
+		type tokentype;
+		const char* text;
+
+		template <typename> [[nodiscard]] type tag() const { return tokentype; }
+		template <typename> void tag(const type type) { tokentype = type; }
+		[[nodiscard]] const char* get() const { return text; }
 
 		bool operator==(const token other) const { return strcmp(get(), other.get()) == 0; }
 		bool operator!=(const token other) const { return strcmp(get(), other.get()); }

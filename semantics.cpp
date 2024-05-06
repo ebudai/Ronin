@@ -20,7 +20,7 @@ namespace ronin
 	template <> void analyze<statement::type::importer>(context* context, const statement statement)
 	{
 		const auto import = static_cast<importer*>(statement.get());
-		const auto name = new identifier{import->name->begin(), import->name->end()};
+		const auto name = new identifier{import->name.begin(), import->name.end()};
 		const auto imported = new unresolved<module>(name);
 		context->import(imported);
 	}
@@ -28,7 +28,7 @@ namespace ronin
 	template <> void analyze<statement::type::exporter>(context* context, const statement statement)
 	{
 		const auto exporter = static_cast<ronin::exporter*>(statement.get());
-		const auto mod = main::module[*exporter->name];
+		const auto mod = main::module[exporter->name];
 		mod->submodules.push_back(context);
 	}
 
