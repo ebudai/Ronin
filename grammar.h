@@ -1,6 +1,7 @@
 #pragma once
 
 #include "token.h"
+#include "lib/magic_enum.hpp"
 #include <utility>
 #include <vector>
 #include <span>
@@ -20,7 +21,7 @@ namespace ronin
 			input,
 			lookup,
 			loop,
-			block,
+			scope,
 			association,
 			reference,
 			data_declaration,
@@ -28,44 +29,60 @@ namespace ronin
 			type_declaration,
 			extension,
 			unknown,
+			error,
 		};
 
 		using tagged_ptr::tagged_ptr;
+
+		template <type T> [[nodiscard]] bool is() const { return tag<type>() == T; }
 	};
 
 	template <char open_t, typename element_t, char separator_t, char close_t>
-	struct aggregate
-	{
-		static aggregate* parse(std::span<token>& tokens);
+	struct aggregate : std::vector<element_t*> { };
 
-		std::vector<element_t*> elements;
-	};
-
-	using words = std::span<token>;
+	using name = std::span<token>;
 
 	struct literal
 	{
 		token value;
 	};
 
-	struct association;
-	struct block;
 	struct data_declaration;
 	struct delegate_declaration;
 	struct function_declaration;
-	struct reference;
 	struct type_declaration;
 	struct extension;
+	using declaration = std::variant<data_declaration, function_declaration, type_declaration, delegate_declaration, extension>;
+	using definition = aggregate<'{', declaration, ';', '}'>;
 
-	using declaration = std::variant<data_declaration, function_declaration, type_declaration, extension>;
+	struct reference;
 	using list = aggregate<'[', reference, ',', ']'>;
 	using input = aggregate<'(', reference, ',', ')'>;
+
+	struct association;
 	using lookup = aggregate<'{', association, ',', '}'>;
-	using expression = std::variant<reference, literal, delegate_declaration, list, input, lookup, data_declaration, function_declaration, type_declaration, extension, block>;
+
+	using temporary = std::variant<literal, list, input, lookup>;
+
+	struct loop;
+	struct scope;
+	using expression = std::variant<reference, declaration, temporary, loop, scope>;
+
+	//using block = aggregate<'{', expression, ';', '}'>;
+
+	struct parameter
+	{
+		name* name;
+		token returns;
+		reference* type;
+		token assign;
+		expression* initializer;
+	};
+	using parameter_block = aggregate<'(', parameter, ',', ')'>;
 
 	struct reference
 	{
-		using component = std::variant<words, literal, delegate_declaration, list, input, lookup>;
+		using component = std::variant<name, literal, delegate_declaration, list, input, lookup>;
 
 		std::vector<component*> components;
 	};
@@ -73,13 +90,25 @@ namespace ronin
 	struct importer
 	{
 		token keyword;
-		words name;
+		name name;
 	};
 
 	struct exporter
 	{
 		token keyword;
-		words name;
+		name name;
+	};
+
+	struct identifier
+	{
+		using component = std::variant<name, parameter_block>;
+
+		std::vector<component> components;
+	};
+
+	struct member
+	{
+		identifier* identifier;
 	};
 
 	struct association
@@ -89,41 +118,21 @@ namespace ronin
 		expression* assignment;
 	};
 
-	struct parameter
-	{
-		words* name;
-		token returns;
-		reference* type;
-		token assign;
-		expression* initalizer;
-	};
-
 	struct data_declaration
 	{
 		token keyword;
 		parameter* declaration;
 	};
 
-	using parameter_block = aggregate<'(', parameter, ',', ')'>;
-
-	struct name
-	{
-		using component = std::variant<words, parameter_block>;
-
-		std::vector<component*> components;
-	};
-
 	struct function_declaration
 	{
 		token keyword;
-		name* identifier;
+		identifier* identifier;
 		token returns;
 		reference* type;
 		token equals;
 		expression* body;
 	};
-	
-	using definition = aggregate<'{', declaration, ';', '}'>;
 
 	struct type_declaration
 	{
@@ -136,14 +145,14 @@ namespace ronin
 		type_declaration() = default;
 		type_declaration(const type_declaration&) = default;
 
-		type_declaration(const token keyword, name* name, const token equals, std::vector<body> definitions)
+		type_declaration(const token keyword, identifier* name, const token equals, std::vector<body> definitions)
 			: keyword(keyword)
 			, name(name)
 			, equals(equals)
 			, definitions(std::move(definitions)) { }
 
 		token keyword;
-		name* name;
+		identifier* name;
 		token equals;
 
 		std::vector<body> definitions;
@@ -152,34 +161,42 @@ namespace ronin
 	struct extension
 	{
 		token keyword;
-		name* name;
+		identifier* name;
 		type_declaration::body* definition;
 	};
 
 	struct delegate_declaration
 	{
-		using parameter_block = std::variant<words, parameter_block>;
+		using parameter_block = std::variant<name, parameter_block>;
 
 		parameter_block* parameters;
 		expression* definition;
 	};
-
-	struct block : aggregate<'{', expression, ';', '}'> {};
 
 	struct loop
 	{
 		token keyword;
 		reference* iterator;
 		token returns;
-		words* item_name;
+		name* item_name;
 		token assign;
 		expression* body;
 	};
+
+	struct scope
+	{
+		using block = aggregate<'{', expression, ';', '}'>;
+
+		block statements;
+	};
+	/*struct expression : resolvable
+	{
+		expression() = default;
+		explicit expression(resolvable* x) : resolvable(std::move(*x)) {}
+	};*/
 
 	struct unknown
 	{
 		std::span<token> tokens;
 	};
-
-	std::vector<statement> parse(std::span<token> tokens);
 }

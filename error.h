@@ -20,11 +20,6 @@ namespace ronin
 			errors.push_back(this);
 		}
 
-		template <typename T> static error* bad(T* pointer)
-		{
-			return std::find(errors.begin(), errors.end(), pointer) != errors.end();
-		}
-
 		std::string reason;
 		std::span<token> tokens;
 
@@ -35,7 +30,10 @@ namespace ronin
 	{
 		struct expected : T, error
 		{
-			expected(const std::string& reason, const std::span<token> tokens) : error("expected " + reason, tokens) {}
+			expected(const std::string& reason, const std::span<token> tokens) : error("expected " + reason, tokens)
+			{
+
+			}
 		};
 	};
 }

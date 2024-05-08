@@ -4,19 +4,19 @@ using namespace std;
 
 namespace ronin
 {
-	static bool operator==(const identifier& lhs, const std::span<identifier::value_type> rhs)
+	static bool operator==(const identifier& lhs, const std::span<identifier::component> rhs)
 	{
-		if (lhs.size() != rhs.size()) return false;
+		if (lhs.components.size() != rhs.size()) return false;
 
 		for (size_t i = 0; i != rhs.size(); ++i)
 		{
-			if (auto const name = std::get_if<token>(&lhs[i]))
+			if (auto const name = std::get_if<ronin::name>(&lhs.components[i]))
 			{
-				if (auto const other = std::get_if<token>(&rhs[i]); *name == *other) continue;
+				//if (auto const other = std::get_if<words>(&rhs[i]); *name == *other) continue;
 				return false;
 			}
 
-			auto const params = std::get<parameters>(lhs[i]);
+			//auto const params = std::get<parameters>(lhs.components[i]);
 			//if (auto const other = std::get_if<parameters>(&rhs[i]); params == *other) continue;
 			return false;
 		}
@@ -24,7 +24,7 @@ namespace ronin
 		return true;
 	}
 
-	std::vector<member*> context::operator[](const std::span<identifier::value_type> identifier)
+	/*std::vector<member*> context::operator[](const std::span<identifier::component> identifier)
 	{
 		std::vector<member*> found;
 
@@ -38,5 +38,5 @@ namespace ronin
 		}
 
 		return found;
-	}
+	}*/
 }

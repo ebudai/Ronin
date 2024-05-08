@@ -1,6 +1,6 @@
 #pragma once
 
-#include "semantics.h"
+#include "model.h"
 #include <mutex>
 
 namespace ronin
@@ -9,41 +9,26 @@ namespace ronin
 
 	struct context
 	{
-		virtual ~context() = default;
-
-		virtual bool operator==(const context& other) const { return this == &other; }
-
-		virtual std::vector<member*> operator[](std::span<identifier::value_type> identifier);
-
-		void import(module* module) {} //TODO
-		void add(const member& member) {} //TODO
-
-	protected:
-
 		std::vector<module*> imports;
 		std::vector<member> members;
-
-	private:
-
-		std::mutex lock;
 	};
 
-	struct scope final : context
+	/*struct scope final : context
 	{
 		~scope() override = default;
 
-		std::vector<member*> operator[](std::span<identifier::value_type> identifier) override { return {}; } //TODO
+		std::vector<member*> operator[](std::span<identifier::component> identifier) override { return {}; } //TODO
 
-		context* parent;
+		context* parent = nullptr;
 		std::vector<resolution> lines;
-	};
+	};*/
 
-	struct module : context
+	struct module //: context
 	{
-		~module() override = default;
+		//~module() override = default;
 
-		std::vector<member*> operator[](std::span<identifier::value_type> identifier) override { return {}; } //TODO
-		module* operator[](words name) { return nullptr; } //TODO
+		std::vector<member*> operator[](std::span<identifier::component> identifier) /*override*/ { return {}; } //TODO
+		module* operator[](name name) const { return nullptr; } //TODO
 
 		token name;
 		std::vector<context*> submodules;

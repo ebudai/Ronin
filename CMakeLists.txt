@@ -21,8 +21,12 @@ add_executable(Ronin
         grammar.h
         ronin.cpp
         semantics.cpp
+        model.h
+        token.h
         semantics.h
-        token.h)
+        semantics.h
+        parser.h
+        parser.h)
 
 target_link_libraries (Ronin ICU)
 
@@ -37,3 +41,7 @@ FetchContent_Declare(
 # For Windows: Prevent overriding the parent project's compiler/linker settings
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
+
+if (CMAKE_BUILD_TYPE MATCHES Debug)
+    add_definitions(-DDEBUG)
+endif()

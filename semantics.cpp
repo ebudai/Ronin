@@ -1,11 +1,11 @@
-#include "semantics.h"
+#include "model.h"
 #include "context.h"
 
 using namespace std;
 
 namespace ronin
 {
-	static bool operator==(const words lhs, const words rhs)
+	static bool operator==(const name lhs, const name rhs)
 	{
 		if (lhs.size() != rhs.size()) return false;
 		for (size_t i = 0; i != lhs.size(); ++i)
@@ -20,9 +20,9 @@ namespace ronin
 	template <> void analyze<statement::type::importer>(context* context, const statement statement)
 	{
 		const auto import = static_cast<importer*>(statement.get());
-		const auto name = new identifier{import->name.begin(), import->name.end()};
+		const auto name = new identifier{{import->name}};
 		const auto imported = new unresolved<module>(name);
-		context->import(imported);
+		//context->import(imported);
 	}
 
 	template <> void analyze<statement::type::exporter>(context* context, const statement statement)
@@ -34,12 +34,11 @@ namespace ronin
 
 	template <> void analyze<statement::type::literal>(context* context, const statement statement)
 	{
-		// we should only be here if there is only one statement
 		const auto literal = static_cast<ronin::literal*>(statement.get());
 
 	}
 
-	context* analyze(span<statement> statements)
+	context* analyze(const span<statement> statements)
 	{
 		const auto context = new ronin::context;
 
